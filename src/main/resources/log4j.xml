@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+<log4j:configuration debug="false"
+                     xmlns:log4j='http://jakarta.apache.org/log4j/'>
+
+    <appender name="EventHandlerConsole" class="org.apache.log4j.ConsoleAppender">
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+    </appender>
+
+    <appender name="EventHandlerFile" class="org.apache.log4j.RollingFileAppender">
+        <param name="File" value="${user.home}/logs/EventsRecording/EventHandle.log"/>
+        <param name="MaxFileSize" value="100MB"/>
+        <param name="MaxBackupIndex" value="10"/>
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern"
+                   value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"/>
+        </layout>
+        <filter class="org.apache.log4j.varia.LevelRangeFilter">
+            <param name="LevelMin" value="INFO"/>
+            <param name="LevelMax" value="FATAL"/>
+            <param name="AcceptOnMatch" value="true"/>
+        </filter>
+    </appender>
+
+    <logger name="ru.sssmaximusss.eventshandler">
+        <appender-ref ref="EventHandlerConsole"/>
+        <appender-ref ref="EventHandlerFile"/>
+    </logger>
+
+    <root>
+        <level value="DEBUG"/>
+    </root>
+</log4j:configuration>
