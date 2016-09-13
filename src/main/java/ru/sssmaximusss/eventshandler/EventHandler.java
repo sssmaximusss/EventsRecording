@@ -2,11 +2,12 @@ package ru.sssmaximusss.eventshandler;
 
 import org.apache.log4j.Logger;
 
-import java.text.SimpleDateFormat;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class EventHandler {
 
@@ -15,6 +16,8 @@ public class EventHandler {
      * and comparator, which compares a time of adding Event into system {@link EventsComparator#compare(Event, Event)}
      */
     private TreeMap<Event, Integer> events;
+
+    private ReadWriteLock rwLock = new ReentrantReadWriteLock();
 
     private boolean isDebug = false;
     private static final Logger logger = Logger.getLogger(EventHandler.class);
@@ -33,12 +36,22 @@ public class EventHandler {
      * @param event the input event
      */
     public void addEvent(final Event event) {
-        Integer numberEvents = events.get(event);
-        if (numberEvents == null) {
-            numberEvents = 0;
-        }
 
-        events.put(event, numberEvents + 1);
+        rwLock.writeLock().lock();
+        try {
+            Integer numberEvents = events.get(event);
+            if (numberEvents == null) {
+                numberEvents = 0;
+            }
+
+            events.put(event, numberEvents + 1);
+
+            if (isDebug) {
+                logger.debug("Add new event: " + event);
+            }
+        } finally {
+            rwLock.writeLock().unlock();
+        }
     }
 
     /**
@@ -70,40 +83,40 @@ public class EventHandler {
      */
     public long getNumberEvents(Date startTimeSlot) {
 
-        if (events.isEmpty()) {
-            return 0;
-        }
-
-        /**
-         * get the key, after which all the events are interested by us
-         */
-        Event key = events.lowerKey(new Event(null, null, startTimeSlot));
-
-        if (isDebug) {
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss.SSS");
-            logger.debug("Starting time of time slot: " + dateFormat.format(startTimeSlot));
-            logger.debug("Event with similar time in system: " + key);
-        }
-
-        /**
-         * if time slot begins earlier than the earliest event in the system,
-         * events.lowerKey() returns null. For this reason, I use the earliest event in the system
-         * to get the number of all events
-         */
-        boolean inclusive = false;
-        if (key == null) {
-            key = events.firstKey();
-            inclusive = true;
-        }
-
-        /**
-         * get the submap to amount the number of needed events
-         */
-        SortedMap<Event, Integer> eventsPerTimeSlot = events.tailMap(key, inclusive);
-
         long numberEvents = 0;
-        for (Integer numberEvent : eventsPerTimeSlot.values()) {
-            numberEvents += numberEvent;
+        rwLock.readLock().lock();
+        try {
+            if (events.isEmpty()) {
+                return 0;
+            }
+
+            /**
+             * get the key, after which all the events are interested by us
+             */
+            Event key = events.lowerKey(new Event(null, null, startTimeSlot));
+
+            /**
+             * if time slot begins earlier than the earliest event in the system,
+             * events.lowerKey() returns null. For this reason, I use the earliest event in the system
+             * to get the number of all events
+             */
+            boolean inclusive = false;
+            if (key == null) {
+                key = events.firstKey();
+                inclusive = true;
+            }
+
+            /**
+             * get the submap to amount the number of needed events
+             */
+            SortedMap<Event, Integer> eventsPerTimeSlot;
+            eventsPerTimeSlot = events.tailMap(key, inclusive);
+            for (Integer numberEvent : eventsPerTimeSlot.values()) {
+                numberEvents += numberEvent;
+            }
+
+        } finally {
+            rwLock.readLock().unlock();
         }
 
         return numberEvents;
@@ -116,12 +129,18 @@ public class EventHandler {
      */
     @Override
     public String toString() {
+
         StringBuilder handlerOutput = new StringBuilder();
-        events.entrySet().forEach(eventIntegerEntry -> handlerOutput
-                .append(eventIntegerEntry.getKey())
-                .append(" : ")
-                .append(eventIntegerEntry.getValue())
-                .append("\n"));
+        rwLock.readLock().lock();
+        try {
+            events.entrySet().forEach(eventIntegerEntry -> handlerOutput
+                    .append(eventIntegerEntry.getKey())
+                    .append(" : ")
+                    .append(eventIntegerEntry.getValue())
+                    .append("\n"));
+        } finally {
+            rwLock.readLock().unlock();
+        }
 
         return handlerOutput.toString();
     }
