@@ -35,9 +35,10 @@ public class EventHandlerReadWriteLockingTest {
         /**
          * Create threads to write
          */
+
+        final Calendar generatorDate = new GregorianCalendar();
         List<Thread> writeThreads = new ArrayList<>();
         for (int i = 0; i < numberThreads; i++) {
-            Calendar generatorDate = new GregorianCalendar();
             generatorDate.add(Calendar.SECOND, -2);
             writeThreads.add(new Thread(() -> eventHandler.addEvent(new Event("Writer", "", generatorDate.getTime())), "Writer" + i));
         }
@@ -64,7 +65,6 @@ public class EventHandlerReadWriteLockingTest {
          * Create and start new writing threads
          */
         for (int i = 0; i < numberThreads / 2; i++) {
-            Calendar generatorDate = new GregorianCalendar();
             generatorDate.add(Calendar.SECOND, -2);
             new Thread(() -> eventHandler.addEvent(new Event("Writer", "", generatorDate.getTime())), "Writer" + (numberThreads + i)).start();
         }

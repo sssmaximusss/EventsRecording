@@ -6,8 +6,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.StampedLock;
 
 public class EventHandler {
 
@@ -17,7 +16,7 @@ public class EventHandler {
      */
     private TreeMap<Event, Integer> events;
 
-    private ReadWriteLock rwLock = new ReentrantReadWriteLock();
+    private StampedLock stampedLock = new StampedLock();
 
     private boolean isDebug = false;
     private static final Logger logger = Logger.getLogger(EventHandler.class);
@@ -37,7 +36,7 @@ public class EventHandler {
      */
     public void addEvent(final Event event) {
 
-        rwLock.writeLock().lock();
+        long stamp = stampedLock.writeLock();
         try {
             Integer numberEvents = events.get(event);
             if (numberEvents == null) {
@@ -50,7 +49,7 @@ public class EventHandler {
                 logger.debug("Add new event: " + event);
             }
         } finally {
-            rwLock.writeLock().unlock();
+            stampedLock.unlockWrite(stamp);
         }
     }
 
@@ -84,7 +83,7 @@ public class EventHandler {
     public long getNumberEvents(Date startTimeSlot) {
 
         long numberEvents = 0;
-        rwLock.readLock().lock();
+        long stamp = stampedLock.readLock();
         try {
             if (events.isEmpty()) {
                 return 0;
@@ -109,14 +108,13 @@ public class EventHandler {
             /**
              * get the submap to amount the number of needed events
              */
-            SortedMap<Event, Integer> eventsPerTimeSlot;
-            eventsPerTimeSlot = events.tailMap(key, inclusive);
+            SortedMap<Event, Integer> eventsPerTimeSlot = events.tailMap(key, inclusive);
             for (Integer numberEvent : eventsPerTimeSlot.values()) {
                 numberEvents += numberEvent;
             }
 
         } finally {
-            rwLock.readLock().unlock();
+            stampedLock.unlockRead(stamp);
         }
 
         return numberEvents;
@@ -131,7 +129,7 @@ public class EventHandler {
     public String toString() {
 
         StringBuilder handlerOutput = new StringBuilder();
-        rwLock.readLock().lock();
+        long stamp = stampedLock.readLock();
         try {
             events.entrySet().forEach(eventIntegerEntry -> handlerOutput
                     .append(eventIntegerEntry.getKey())
@@ -139,7 +137,7 @@ public class EventHandler {
                     .append(eventIntegerEntry.getValue())
                     .append("\n"));
         } finally {
-            rwLock.readLock().unlock();
+            stampedLock.unlockRead(stamp);
         }
 
         return handlerOutput.toString();
