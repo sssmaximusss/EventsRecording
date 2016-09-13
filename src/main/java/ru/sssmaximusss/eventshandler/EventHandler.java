@@ -5,17 +5,17 @@ import org.apache.log4j.Logger;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class EventHandler {
 
     /**
-     * Data contains in treemap with key = Event, value = a number of events with similar key
+     * Data contains in ConcurrentSkipListMap with key = Event, value = a number of events with similar key
      * and comparator, which compares a time of adding Event into system {@link EventsComparator#compare(Event, Event)}
      */
-    private TreeMap<Event, Integer> events;
+    private ConcurrentSkipListMap<Event, Integer> events;
 
     private ReadWriteLock rwLock = new ReentrantReadWriteLock();
 
@@ -26,11 +26,11 @@ public class EventHandler {
      * Default constructor, based comparator = EventsComparator {@link EventsComparator}
      */
     public EventHandler() {
-        events = new TreeMap<>(new EventsComparator());
+        events = new ConcurrentSkipListMap<>(new EventsComparator());
     }
 
     /**
-     * Add the event to TreeMap.
+     * Add the event to container.
      * If TreeMap already contains the event, value will increment by 1
      *
      * @param event the input event
